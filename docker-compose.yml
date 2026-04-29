@@ -68,7 +68,7 @@ services:
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
       - ./shared_logs:/var/log/usos:ro
-    command: ["/bin/sh", "-c", "filebeat setup -e && filebeat -e --strict.perms=false"]
+    command: ["/bin/sh", "-c", "filebeat -e --strict.perms=false && filebeat setup -e"]
     depends_on:
       elasticsearch:
         condition: service_healthy
