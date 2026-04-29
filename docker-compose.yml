@@ -1,0 +1,81 @@
+services:
+  generator-file:
+    image: python:3.9-slim
+    container_name: generator_file
+    volumes:
+      - ./generator_file.py:/app/generator_file.py:ro
+      - ./shared_logs:/var/log/usos
+    working_dir: /app
+    command: [ "python", "-u", "generator_file.py" ]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  generator-network:
+    image: python:3.9-slim
+    container_name: generator_network
+    volumes:
+      - ./generator_net.py:/app/generator_net.py:ro
+    working_dir: /app
+    command: [ "python", "-u", "generator_net.py" ]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.3
+    container_name: elasticsearch
+    environment:
+      - node.name=es01
+      - discovery.type=single-node
+      - cluster.name=es-docker-cluster
+      - bootstrap.memory_lock=true # disables swapping for better performance
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # set JVM heap size
+      - xpack.security.enabled=false # disable security for simplicity
+    ulimits: # disables swapping for better performance
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.3.3
+    container_name: kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:9.3.3
+    container_name: filebeat
+    user: root
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./shared_logs:/var/log/usos:ro
+    command: ["/bin/sh", "-c", "filebeat setup -e && filebeat -e --strict.perms=false"]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_started
+    restart: on-failure
+
+volumes:
+  esdata:
+    driver: local

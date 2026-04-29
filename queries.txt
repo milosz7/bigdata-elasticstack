@@ -1,0 +1,3 @@
+message : *Fizyki* - wszystkie logi które zawierają słowo "Fizyki"
+status_code > 200 - wszystkie logi, których status_code jest większy niż 200 (czyli błędy)
+client_ip : 149.156* - wszystkie logi, których client_ip zaczyna się od "149.156" (Kraków)
